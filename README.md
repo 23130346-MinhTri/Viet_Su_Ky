@@ -1,58 +1,104 @@
-# VIỆT SỬ KÝ — AI Documentation Pack
-Version 3.0 | Vietnamese-first | Web 2.5D educational strategy game
+# VIỆT SỬ KÝ
 
-## Fixed product decisions
-- Audience: both students and history enthusiasts.
-- Gameplay: hybrid learning + strategy + management + missions.
-- Visual style: 2.5D, isometric/oblique.
-- Historical scope: chronological framework beginning with Văn Lang – Âu Lạc.
-- MVP: two introductory chapters, Văn Lang and Âu Lạc; do not build every era in depth.
-- Frontend: React + TypeScript + Vite.
-- Game engine: Phaser 3 embedded in React.
-- Backend: Java + Spring Boot.
-- Database: PostgreSQL; Flyway migrations.
-- Architecture: modular monolith first.
-- Deployment: Docker + Nginx.
+Nền tảng trò chơi giáo dục lịch sử Việt Nam, kết hợp khám phá, học tập và
+nhiệm vụ. Đây là bộ khung phát triển ban đầu; chưa triển khai nghiệp vụ game
+hoặc nội dung lịch sử.
 
-## AI reading order
-1. AI_WORKFLOW.md
-2. PROJECT_CONTEXT.md
-3. PRODUCT_GDD.md
-4. TECHNICAL_DESIGN.md
-5. SRS.md
-6. ARCHITECTURE.md
-7. DATABASE_DESIGN.md
-8. API_CONTRACT.md
-9. GAME_SYSTEMS.md
-10. HISTORICAL_CONTENT_GUIDELINES.md
-11. UI_UX_GUIDELINES.md
-12. CODING_STANDARDS.md
-13. TESTING_STRATEGY.md
-14. SECURITY.md
-15. ROADMAP.md
-16. DECISIONS.md
-17. AI_TASK_PROMPTS.md
+## Công nghệ
 
-## Rules
-- Inspect the actual repository before changing code; never assume it is empty.
-- Do not silently change fixed product decisions.
-- Do not invent historical facts, citations, dates, quotes, or sources.
-- Separate documented facts, interpretations, traditions/legends, debates, and gameplay fiction.
-- Never present hypothetical gameplay outcomes as historical fact.
-- Keep authoritative scores, rewards, unlocks, mission completion, and persistent resources on the backend.
-- Phaser must not access the database or own application routing.
-- Prefer small, tested vertical slices over giant scaffolds.
-- Update docs when architecture or behavior changes.
+- Frontend: React, TypeScript, Vite, Phaser 3, React Router, Axios, SCSS.
+- Backend: Java 25 (LTS), Spring Boot 3, Maven, Spring Security (chưa bật xác thực),
+  Spring Data JPA, Validation và Actuator.
+- Database: PostgreSQL 16, Flyway.
+- Hạ tầng: Docker Compose và Nginx.
 
-## Suggested repository
-```text
-viet-su-ky/
-├── docs/
-├── frontend/
-├── backend/
-├── database/
-├── assets/
-├── infra/
-├── scripts/
-└── README.md
+## Chạy toàn bộ bằng Docker Compose
+
+Cần Docker Desktop đang chạy.
+
+```powershell
+Copy-Item .env.example .env
+# Chỉnh POSTGRES_PASSWORD trong .env trước khi dùng môi trường chia sẻ.
+docker compose up --build
 ```
+
+- Frontend: http://localhost:8081 (hoặc cổng `FRONTEND_PORT` trong `.env`).
+- Backend API: http://localhost:8080/api/v1/health
+- Health của Spring Boot Actuator: http://localhost:8080/actuator/health
+- PostgreSQL: `localhost:5432`.
+
+Compose aguarda a prontidão do PostgreSQL antes de iniciar o backend; o backend
+executa as migrations Flyway na inicialização; Nginx serve o frontend e
+encaminha `/api/` para o backend. Os dados do PostgreSQL ficam no volume
+`postgres_data`.
+
+Para encerrar sem apagar os dados:
+
+```powershell
+docker compose down
+```
+
+## Desenvolvimento local
+
+### Frontend
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Abra http://localhost:5173. O Vite encaminha `/api/` para
+`http://localhost:8080`. Defina `VITE_DEV_BACKEND_URL` para alterar esse
+destino. Para validar:
+
+```powershell
+npm run typecheck
+npm run lint
+npm run build
+```
+
+### Backend
+
+Inicie PostgreSQL (por exemplo, com `docker compose up -d database`) e defina
+as variáveis locais a partir do `.env` raiz. O Spring Boot não carrega arquivos
+`.env` automaticamente. No PowerShell, por exemplo:
+
+```powershell
+$env:DB_HOST = "localhost"
+$env:DB_PORT = "5432"
+$env:DB_NAME = "viet_su_ky"
+$env:DB_USERNAME = "viet_su_ky"
+$env:DB_PASSWORD = "change-me-local-only"
+$env:FRONTEND_ORIGINS = "http://localhost:5173"
+cd backend
+mvn spring-boot:run
+```
+
+API: http://localhost:8080/api/v1/health
+
+```powershell
+mvn clean test
+mvn clean package
+```
+
+As configurações comuns estão em `application.yml`. O perfil `dev` é usado por
+padrão; ative `prod` com `SPRING_PROFILES_ACTIVE=prod`. Nenhuma autenticação de
+usuário está implementada nesta etapa; as rotas atuais são públicas.
+
+## Estrutura
+
+```text
+frontend/                 React/Vite e integração Phaser
+backend/                  Spring Boot modular monolith
+database/                 Notas de banco de dados
+infrastructure/nginx/     Proxy reverso e SPA fallback
+docs/                     Guia operacional deste setup
+scripts/                  Notas para scripts de desenvolvimento
+viet-su-ky-ai-docs/        Documentação de produto e arquitetura V3
+docker-compose.yml         Ambiente local integrado
+```
+
+Consulte [docs/README.md](docs/README.md) e a documentação V3 em
+`viet-su-ky-ai-docs/`. A arquitetura mantém o backend como autoridade de
+progresso/recompensas; Phaser é apenas apresentação/interação local.

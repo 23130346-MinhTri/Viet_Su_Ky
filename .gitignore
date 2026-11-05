@@ -12,3 +12,23 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.log
+
+# Local environment files
+/.env
+/.env.*
+!/.env.example
+/frontend/.env
+/frontend/.env.*
+!/frontend/.env.example
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+
+# Backend
+backend/target/
+
+# Local data and IDE state
+.data/
+.idea/
