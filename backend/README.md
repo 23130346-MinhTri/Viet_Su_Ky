@@ -1,6 +1,6 @@
 # Backend
 
-Spring Boot 3 modular monolith baseline, targeting Java 25. The only sample
+Spring Boot 3 modular monolith baseline, targeting Java 17. The only sample
 business-independent route is `GET /api/v1/health`. Spring Security is present
 for later integration, but authentication is not implemented and routes are
 currently public.

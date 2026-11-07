@@ -18,7 +18,7 @@
     <description>VIỆT SỬ KÝ modular monolith backend</description>
 
     <properties>
-        <java.version>25</java.version>
+        <java.version>17</java.version>
         <flyway.version>11.8.2</flyway.version>
     </properties>
 

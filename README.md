@@ -7,7 +7,7 @@ hoặc nội dung lịch sử.
 ## Công nghệ
 
 - Frontend: React, TypeScript, Vite, Phaser 3, React Router, Axios, SCSS.
-- Backend: Java 25 (LTS), Spring Boot 3, Maven, Spring Security (chưa bật xác thực),
+- Backend: Java 17 (LTS), Spring Boot 3, Maven, Spring Security (chưa bật xác thực),
   Spring Data JPA, Validation và Actuator.
 - Database: PostgreSQL 16, Flyway.
 - Hạ tầng: Docker Compose và Nginx.
