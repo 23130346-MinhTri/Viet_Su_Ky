@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto'
 import { expect, test } from '@playwright/test'
 
 test('registers, logs in, uses JWT, updates own profile, and logs out', async ({ page }) => {
-  const email = `phase23-${randomUUID()}@example.test`
-  const password = `Phase23-${randomUUID()}Aa1`
+  const uniqueId = () => `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const email = `phase23-${uniqueId()}@example.test`
+  const password = `Phase23-${uniqueId()}Aa1`
   const initialDisplayName = 'Phase 2.3 Player'
   const updatedDisplayName = 'Updated Phase 2.3 Player'
 
