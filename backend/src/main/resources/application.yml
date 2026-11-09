@@ -39,3 +39,6 @@ management:
 app:
   cors:
     allowed-origins: ${FRONTEND_ORIGINS:http://localhost:5173}
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration-ms: ${JWT_EXPIRATION_MS:900000}
