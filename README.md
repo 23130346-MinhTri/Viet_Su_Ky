@@ -7,7 +7,7 @@ hoặc nội dung lịch sử.
 ## Công nghệ
 
 - Frontend: React, TypeScript, Vite, Phaser 3, React Router, Axios, SCSS.
-- Backend: Java 17 (LTS), Spring Boot 3, Maven, Spring Security (chưa bật xác thực),
+- Backend: Java 17 (LTS), Spring Boot 3, Maven, Spring Security với JWT,
   Spring Data JPA, Validation và Actuator.
 - Database: PostgreSQL 16, Flyway.
 - Hạ tầng: Docker Compose và Nginx.
@@ -18,7 +18,7 @@ Cần Docker Desktop đang chạy.
 
 ```powershell
 Copy-Item .env.example .env
-# Chỉnh POSTGRES_PASSWORD trong .env trước khi dùng môi trường chia sẻ.
+# Set unique database credentials and a generated JWT_SECRET (at least 32 chars) in .env.
 docker compose up --build
 ```
 
@@ -69,7 +69,8 @@ $env:DB_HOST = "localhost"
 $env:DB_PORT = "5432"
 $env:DB_NAME = "viet_su_ky"
 $env:DB_USERNAME = "viet_su_ky"
-$env:DB_PASSWORD = "change-me-local-only"
+$env:DB_PASSWORD = "<generated database password>"
+$env:JWT_SECRET = "<generated secret with at least 32 characters>"
 $env:FRONTEND_ORIGINS = "http://localhost:5173"
 cd backend
 mvn spring-boot:run
@@ -83,8 +84,9 @@ mvn clean package
 ```
 
 As configurações comuns estão em `application.yml`. O perfil `dev` é usado por
-padrão; ative `prod` com `SPRING_PROFILES_ACTIVE=prod`. Nenhuma autenticação de
-usuário está implementada nesta etapa; as rotas atuais são públicas.
+padrão; ative `prod` com `SPRING_PROFILES_ACTIVE=prod`. `JWT_SECRET` é
+obrigatória e deve ter pelo menos 32 caracteres; não há segredo padrão no
+código. A API oferece registro/login e rotas autenticadas de conta e perfil.
 
 ## Estrutura
 
