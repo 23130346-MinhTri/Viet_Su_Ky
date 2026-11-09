@@ -1,23 +1,23 @@
 # Backend
 
-Spring Boot 3 modular monolith baseline, targeting Java 17. The only sample
-business-independent route is `GET /api/v1/health`. Spring Security is present
-for later integration, but authentication is not implemented and routes are
-currently public.
+Spring Boot 3 modular monolith targeting Java 17. It provides account
+registration/login, signed JWT authentication, player profiles, and
+`GET /api/v1/health`.
 
 ## Run locally
 
 Start PostgreSQL and set `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USERNAME`,
-`DB_PASSWORD`, and optionally `FRONTEND_ORIGINS`. The repository-root
-`.env.example` documents the local values; Maven does not load `.env` files.
+`DB_PASSWORD`, `JWT_SECRET` (generated, at least 32 characters), and optionally
+`FRONTEND_ORIGINS`. The repository-root `.env.example` lists variable names;
+Maven does not load `.env` files. No default JWT secret is configured.
 
 ```powershell
 mvn spring-boot:run
 ```
 
 Flyway applies versioned files under
-`src/main/resources/db/migration/`. The first migration creates only the
-technical `app` schema; domain tables are intentionally not included.
+`src/main/resources/db/migration/`. Migrations create the application schema,
+accounts, and player profiles.
 
 ## Verify
 
