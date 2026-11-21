@@ -2,9 +2,16 @@ import axios from 'axios'
 import type {
   ApiEnvelope,
   AuthResponse,
+  GameSave,
+  GameSaveRequest,
   HealthResponse,
   LoginRequest,
+  Mission,
+  MissionAvailability,
+  MissionProgress,
   PlayerProfile,
+  PlayerProgress,
+  PlayerReward,
   RegisterRequest,
   UpdatePlayerProfileRequest,
 } from '../types/api'
@@ -55,5 +62,40 @@ export async function updateCurrentPlayer(
   payload: UpdatePlayerProfileRequest,
 ): Promise<ApiEnvelope<PlayerProfile>> {
   const response = await api.put<ApiEnvelope<PlayerProfile>>('/players/me', payload)
+  return response.data
+}
+
+export async function getMissions(): Promise<ApiEnvelope<Mission[]>> {
+  const response = await api.get<ApiEnvelope<Mission[]>>('/missions')
+  return response.data
+}
+
+export async function getMissionAvailability(missionId: string): Promise<ApiEnvelope<MissionAvailability>> {
+  const response = await api.get<ApiEnvelope<MissionAvailability>>(`/missions/${missionId}/availability`)
+  return response.data
+}
+
+export async function getCurrentPlayerProgress(): Promise<ApiEnvelope<PlayerProgress>> {
+  const response = await api.get<ApiEnvelope<PlayerProgress>>('/players/me/progress')
+  return response.data
+}
+
+export async function getCurrentMissionProgress(): Promise<ApiEnvelope<MissionProgress[]>> {
+  const response = await api.get<ApiEnvelope<MissionProgress[]>>('/players/me/progress/missions')
+  return response.data
+}
+
+export async function getCurrentPlayerRewards(): Promise<ApiEnvelope<PlayerReward[]>> {
+  const response = await api.get<ApiEnvelope<PlayerReward[]>>('/players/me/rewards')
+  return response.data
+}
+
+export async function getGameSaves(): Promise<ApiEnvelope<GameSave[]>> {
+  const response = await api.get<ApiEnvelope<GameSave[]>>('/players/me/game-saves')
+  return response.data
+}
+
+export async function saveGameState(saveId: string, payload: GameSaveRequest): Promise<ApiEnvelope<GameSave>> {
+  const response = await api.put<ApiEnvelope<GameSave>>(`/players/me/game-saves/${saveId}`, payload)
   return response.data
 }
