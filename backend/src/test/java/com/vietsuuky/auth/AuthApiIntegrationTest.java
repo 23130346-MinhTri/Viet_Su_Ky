@@ -3,6 +3,13 @@ package com.vietsuuky.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vietsuuky.account.repository.AccountRepository;
 import com.vietsuuky.player.repository.PlayerProfileRepository;
+import com.vietsuuky.progress.repository.MissionProgressRepository;
+import com.vietsuuky.progress.repository.PlayerProgressRepository;
+import com.vietsuuky.reward.repository.PlayerRewardRepository;
+import com.vietsuuky.save.repository.GameSaveRepository;
+import com.vietsuuky.session.repository.GameSessionRepository;
+import com.vietsuuky.session.repository.IdempotencyRecordRepository;
+import com.vietsuuky.testsupport.TestDatabaseCleanup;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,10 +43,36 @@ class AuthApiIntegrationTest {
     @Autowired
     private PlayerProfileRepository playerProfileRepository;
 
+    @Autowired
+    private GameSessionRepository gameSessionRepository;
+
+    @Autowired
+    private GameSaveRepository gameSaveRepository;
+
+    @Autowired
+    private MissionProgressRepository missionProgressRepository;
+
+    @Autowired
+    private PlayerProgressRepository playerProgressRepository;
+
+    @Autowired
+    private PlayerRewardRepository playerRewardRepository;
+
+    @Autowired
+    private IdempotencyRecordRepository idempotencyRecordRepository;
+
     @BeforeEach
     void setUp() {
-        playerProfileRepository.deleteAll();
-        accountRepository.deleteAll();
+        TestDatabaseCleanup.clearPlayerGraph(
+                accountRepository,
+                playerProfileRepository,
+                gameSessionRepository,
+                gameSaveRepository,
+                missionProgressRepository,
+                playerProgressRepository,
+                playerRewardRepository,
+                idempotencyRecordRepository
+        );
     }
 
     @Test
