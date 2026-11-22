@@ -1,0 +1,183 @@
+# Tasks-to-Implementation Traceability Checkpoint
+metadata:
+  generated: "2026-11-21"
+  source_tasks: "PHASE_2_4_2_2_IMPLEMENTATION_PLAN.md"
+  last_updated: "2026-11-21"
+
+summary:
+  total_tasks: 8
+  completed_tasks: 8
+  in_progress_tasks: 0
+  pending_tasks: 0
+  completion_percentage: 100.0
+
+tasks:
+  - task_id: "T1"
+    description: "Migration and entity"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "backend/src/main/resources/db/migration/V9__game_session_expiration.sql"
+          change_type: "created"
+          description: "Added last_activity_at, backfill, NOT NULL, and index"
+        - file: "backend/src/main/java/com/vietsuuky/session/entity/GameSession.java"
+          change_type: "modified"
+          description: "Added lastActivityAt"
+    verification:
+      build_passed: true
+      test_results:
+        command: "Flyway V1-V9 and Hibernate validate"
+        passed: 1
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T1"
+      requirements: ["SESSION_EXPIRATION_SCHEMA"]
+
+  - task_id: "T2"
+    description: "Injectable Clock and policy"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "backend/src/main/java/com/vietsuuky/config/TimeConfig.java"
+          change_type: "created"
+          description: "Added Clock bean"
+        - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationPolicy.java"
+          change_type: "created"
+          description: "Added strict boundary policy"
+    verification:
+      build_passed: true
+      test_results:
+        command: "GameSessionExpirationPolicyTest"
+        passed: 4
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T2"
+      requirements: ["SESSION_INACTIVITY_30", "SESSION_ABSOLUTE_120"]
+
+  - task_id: "T3"
+    description: "Pessimistic repository and terminal transitions"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "backend/src/main/java/com/vietsuuky/session/repository/GameSessionRepository.java"
+          change_type: "modified"
+          description: "Added row-lock queries"
+        - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+          change_type: "modified"
+          description: "Added centralized expiration transitions"
+    verification:
+      build_passed: true
+      test_results:
+        command: "PostgreSQL lock and H2 integration verification"
+        passed: 11
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T3"
+      requirements: ["SESSION_EXPIRATION_CONCURRENT_SAFETY"]
+
+  - task_id: "T4"
+    description: "Lazy expiration"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+          change_type: "modified"
+          description: "Added lazy checks to session operations"
+    verification:
+      build_passed: true
+      test_results:
+        command: "GameSessionServiceIntegrationTest"
+        passed: 10
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T4"
+      requirements: ["LAZY_SESSION_EXPIRATION"]
+
+  - task_id: "T5"
+    description: "Scheduled sweep"
+    status: "completed"
+    implementation:
+      files_changed:
+        - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationScheduler.java"
+          change_type: "created"
+          description: "Added fixed-delay batch sweep"
+        - file: "backend/src/main/java/com/vietsuuky/VietSuKyApplication.java"
+          change_type: "modified"
+          description: "Enabled scheduling"
+    verification:
+      build_passed: true
+      test_results:
+        command: "Scheduled sweep integration test"
+        passed: 1
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T5"
+      requirements: ["SCHEDULED_SESSION_EXPIRATION"]
+
+  - task_id: "T6"
+    description: "Unit and integration tests"
+    status: "completed"
+    verification:
+      build_passed: true
+      test_results:
+        command: "mvn -q clean test"
+        passed: 31
+        failed: 0
+        skipped: 4
+        failures: []
+    upstream_trace:
+      plan_item: "T6"
+      requirements: ["EXPIRATION_TESTS"]
+
+  - task_id: "T7"
+    description: "PostgreSQL verification"
+    status: "completed"
+    verification:
+      build_passed: true
+      test_results:
+        command: "Disposable PostgreSQL 16.13"
+        passed: 1
+        failed: 0
+        skipped: 0
+        failures: []
+    upstream_trace:
+      plan_item: "T7"
+      requirements: ["POSTGRESQL_EXPIRATION"]
+
+  - task_id: "T8"
+    description: "Regression and final report"
+    status: "completed"
+    verification:
+      build_passed: true
+    upstream_trace:
+      plan_item: "T8"
+      requirements: ["REGRESSION", "FINAL_REPORT"]
+
+pending_tasks: []
+untracked_changes: []
+traceability_chain:
+  - chain_id: "TRACE-2422"
+    requirement: "SESSION_EXPIRATION"
+    plan_item: "T1-T8"
+    tasks: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"]
+    files:
+      - "backend/src/main/resources/db/migration/V9__game_session_expiration.sql"
+      - "backend/src/main/java/com/vietsuuky/session"
+      - "backend/src/test/java/com/vietsuuky/GameSessionServiceIntegrationTest.java"
+    status: "complete"
+validation:
+  passed: true
+  errors: []
+  warnings:
+    - "Automated multithreaded PostgreSQL JUnit concurrency test not included."
+  blocking_issues: []
