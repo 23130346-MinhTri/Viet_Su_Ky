@@ -2,6 +2,7 @@ package com.vietsuuky.mission.dto;
 
 import com.vietsuuky.mission.enums.MissionStatus;
 import com.vietsuuky.mission.enums.MissionType;
+import com.vietsuuky.progress.enums.MissionProgressStatus;
 
 import java.util.UUID;
 
@@ -17,6 +18,8 @@ public record MissionResponse(
         UUID prerequisiteMissionId,
         int rewardPoints,
         String rewardCode,
-        MissionStatus status
+        MissionStatus status,
+        boolean available,
+        MissionProgressStatus progressStatus
 ) {
 }

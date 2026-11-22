@@ -11,6 +11,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.HttpStatus;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,7 +45,21 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ApiResponse<String>> handleApiException(ApiException ex) {
-        return ResponseEntity.badRequest().body(ApiResponse.error(ex.getMessage()));
+        String errorCode = ex.getErrorCode();
+        HttpStatus status;
+        if ("MISSION_NOT_FOUND".equals(errorCode) || "SESSION_NOT_FOUND".equals(errorCode)) {
+            status = HttpStatus.NOT_FOUND;
+        } else if ("MISSION_LOCKED".equals(errorCode)
+                || "MISSION_INACTIVE".equals(errorCode)
+                || "SESSION_ACCESS_DENIED".equals(errorCode)
+                || "SESSION_ALREADY_ACTIVE".equals(errorCode)
+                || "SESSION_EXPIRED".equals(errorCode)
+                || "SESSION_NOT_ACTIVE".equals(errorCode)) {
+            status = HttpStatus.CONFLICT;
+        } else {
+            status = HttpStatus.BAD_REQUEST;
+        }
+        return ResponseEntity.status(status).body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

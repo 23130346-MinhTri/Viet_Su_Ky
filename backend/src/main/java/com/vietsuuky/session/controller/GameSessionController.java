@@ -13,6 +13,7 @@ import com.vietsuuky.session.entity.GameSession;
 import com.vietsuuky.session.service.GameSessionService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -46,7 +47,8 @@ public class GameSessionController {
         Account account = authenticationService.getCurrentAccount(UUID.fromString(user.getUsername()));
         PlayerProfile player = playerProfileService.getForAccount(account);
         GameSession session = gameSessionService.createSession(player.getId(), request.missionId());
-        return ResponseEntity.ok(ApiResponse.success("Game session created", gameSessionService.toResponse(session)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Game session created", gameSessionService.toResponse(session)));
     }
 
     @GetMapping("/game-sessions/{sessionId}")

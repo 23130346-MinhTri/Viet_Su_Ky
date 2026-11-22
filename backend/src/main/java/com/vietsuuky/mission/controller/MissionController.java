@@ -43,8 +43,12 @@ public class MissionController {
     }
 
     @GetMapping("/missions/{missionId}")
-    public ResponseEntity<ApiResponse<MissionResponse>> getMission(@PathVariable UUID missionId) {
-        return ResponseEntity.ok(ApiResponse.success("Mission retrieved", missionService.getMissionResponse(missionId)));
+    public ResponseEntity<ApiResponse<MissionResponse>> getMission(@AuthenticationPrincipal User user,
+                                                                  @PathVariable UUID missionId) {
+        Account account = authenticationService.getCurrentAccount(UUID.fromString(user.getUsername()));
+        PlayerProfile player = playerProfileService.getForAccount(account);
+        return ResponseEntity.ok(ApiResponse.success("Mission retrieved",
+                missionService.getMissionResponse(player.getId(), missionId)));
     }
 
     @GetMapping("/missions/{missionId}/availability")

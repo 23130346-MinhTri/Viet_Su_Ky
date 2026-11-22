@@ -50,6 +50,9 @@ public class GameSession {
     @Column(name = "ended_at")
     private Instant endedAt;
 
+    @Column(name = "last_activity_at", nullable = false)
+    private Instant lastActivityAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     private SessionStatus status = SessionStatus.ACTIVE;
@@ -79,6 +82,15 @@ public class GameSession {
         this.player = player;
         this.mission = mission;
         this.startedAt = Instant.now();
+        this.lastActivityAt = this.startedAt;
+        this.status = SessionStatus.ACTIVE;
+    }
+
+    public GameSession(PlayerProfile player, Mission mission, Instant startTime) {
+        this.player = player;
+        this.mission = mission;
+        this.startedAt = startTime;
+        this.lastActivityAt = startTime;
         this.status = SessionStatus.ACTIVE;
     }
 }

@@ -19,8 +19,10 @@ import com.vietsuuky.session.enums.SessionStatus;
 import com.vietsuuky.session.repository.GameSessionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
+import java.time.Clock;
 import java.util.UUID;
 
 @Service
@@ -33,6 +35,7 @@ public class GameSessionService {
     private final MissionProgressService missionProgressService;
     private final PlayerRewardService playerRewardService;
     private final PlayerProgressService playerProgressService;
+    private final Clock clock;
 
     public GameSessionService(GameSessionRepository gameSessionRepository,
                              PlayerProfileRepository playerProfileRepository,
@@ -40,7 +43,8 @@ public class GameSessionService {
                              MissionService missionService,
                              MissionProgressService missionProgressService,
                              PlayerRewardService playerRewardService,
-                             PlayerProgressService playerProgressService) {
+                             PlayerProgressService playerProgressService,
+                             Clock clock) {
         this.gameSessionRepository = gameSessionRepository;
         this.playerProfileRepository = playerProfileRepository;
         this.missionRepository = missionRepository;
@@ -48,29 +52,53 @@ public class GameSessionService {
         this.missionProgressService = missionProgressService;
         this.playerRewardService = playerRewardService;
         this.playerProgressService = playerProgressService;
+        this.clock = clock;
     }
 
     @Transactional
     public GameSession createSession(UUID playerId, UUID missionId) {
+        Instant now = clock.instant();
         PlayerProfile player = playerProfileRepository.findById(playerId)
                 .orElseThrow(() -> new ApiException("Player not found"));
         Mission mission = missionRepository.findById(missionId)
-                .orElseThrow(() -> new ApiException("Mission not found"));
+                .orElseThrow(() -> new ApiException("MISSION_NOT_FOUND", "Mission not found"));
         missionService.ensureMissionAvailable(playerId, mission.getId());
+        if (gameSessionRepository.existsByPlayerIdAndMissionIdAndStatus(
+                playerId, missionId, SessionStatus.ACTIVE)) {
+            throw new ApiException("SESSION_ALREADY_ACTIVE",
+                    "An active session already exists for this mission");
+        }
         missionProgressService.markStarted(player, mission);
-        GameSession session = new GameSession(player, mission);
+        GameSession session = new GameSession(player, mission, now);
         session.setMetadata("{\"state\":\"started\"}");
-        return gameSessionRepository.save(session);
-    }
-
-    public GameSession getSessionForPlayer(UUID playerId, UUID sessionId) {
-        return gameSessionRepository.findByIdAndPlayerId(sessionId, playerId)
-                .orElseThrow(() -> new ApiException("Session not found or access denied"));
+        try {
+            return gameSessionRepository.saveAndFlush(session);
+        } catch (DataIntegrityViolationException ex) {
+            throw new ApiException("SESSION_ALREADY_ACTIVE",
+                    "An active session already exists for this mission",
+                    ex);
+        }
     }
 
     @Transactional
+    public GameSession getSessionForPlayer(UUID playerId, UUID sessionId) {
+        GameSession session = gameSessionRepository.findForUpdateByIdAndPlayerId(sessionId, playerId)
+                .orElseThrow(() -> new ApiException("Session not found or access denied"));
+        expireIfOverdue(session, clock.instant());
+        return session;
+    }
+
+    @Transactional(noRollbackFor = ApiException.class)
     public GameSession recordEvent(UUID playerId, UUID sessionId, GameSessionEventRequest request) {
-        GameSession session = getSessionForPlayer(playerId, sessionId);
+        Instant now = clock.instant();
+        GameSession session = gameSessionRepository.findForUpdateByIdAndPlayerId(sessionId, playerId)
+                .orElseThrow(() -> new ApiException("Session not found or access denied"));
+        if (expireIfOverdue(session, now)) {
+            throw new ApiException("SESSION_EXPIRED", "Session has expired");
+        }
+        if (session.getStatus() == SessionStatus.EXPIRED) {
+            throw new ApiException("SESSION_EXPIRED", "Session has expired");
+        }
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new ApiException("Session is no longer active");
         }
@@ -79,15 +107,24 @@ public class GameSessionService {
         session.setMetadata(String.format("{\"eventType\":\"%s\", \"payload\":\"%s\"}",
                 request.eventType(),
                 request.payload() == null ? "" : request.payload()));
+        session.setLastActivityAt(now);
         MissionProgress progress = missionProgressService.ensureForPlayer(session.getPlayer(), session.getMission());
         progress.setProgressValue(Math.max(progress.getProgressValue(), 10));
-        progress.setLastEventAt(Instant.now());
+        progress.setLastEventAt(now);
         return gameSessionRepository.save(session);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public GameSession completeSession(UUID playerId, UUID sessionId, CompleteGameSessionRequest request) {
-        GameSession session = getSessionForPlayer(playerId, sessionId);
+        Instant now = clock.instant();
+        GameSession session = gameSessionRepository.findForUpdateByIdAndPlayerId(sessionId, playerId)
+                .orElseThrow(() -> new ApiException("Session not found or access denied"));
+        if (expireIfOverdue(session, now)) {
+            throw new ApiException("SESSION_EXPIRED", "Session has expired");
+        }
+        if (session.getStatus() == SessionStatus.EXPIRED) {
+            throw new ApiException("SESSION_EXPIRED", "Session has expired");
+        }
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new ApiException("Session is already completed or closed");
         }
@@ -95,7 +132,7 @@ public class GameSessionService {
         int finalScore = request.finalScore() == null ? 0 : Math.max(0, request.finalScore());
         session.setFinalScore(finalScore);
         session.setStatus(SessionStatus.COMPLETED);
-        session.setEndedAt(Instant.now());
+        session.setEndedAt(now);
         if (request.metadata() != null && !request.metadata().isBlank()) {
             session.setMetadata(request.metadata());
         }
@@ -107,16 +144,40 @@ public class GameSessionService {
         return savedSession;
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = ApiException.class)
     public GameSession abandonSession(UUID playerId, UUID sessionId) {
-        GameSession session = getSessionForPlayer(playerId, sessionId);
+        Instant now = clock.instant();
+        GameSession session = gameSessionRepository.findForUpdateByIdAndPlayerId(sessionId, playerId)
+                .orElseThrow(() -> new ApiException("Session not found or access denied"));
+        if (expireIfOverdue(session, now)) {
+            return session;
+        }
+        if (session.getStatus() == SessionStatus.EXPIRED) {
+            throw new ApiException("SESSION_EXPIRED", "Session has expired");
+        }
         if (session.getStatus() != SessionStatus.ACTIVE) {
             throw new ApiException("Session is no longer active");
         }
 
         session.setStatus(SessionStatus.ABANDONED);
-        session.setEndedAt(Instant.now());
+        session.setEndedAt(now);
         return gameSessionRepository.save(session);
+    }
+
+    private boolean expireIfOverdue(GameSession session, Instant now) {
+        if (session.getStatus() != SessionStatus.ACTIVE) {
+            return false;
+        }
+
+        if (!GameSessionExpirationPolicy.isExpired(
+                now, session.getStartedAt(), session.getLastActivityAt())) {
+            return false;
+        }
+
+        session.setStatus(SessionStatus.EXPIRED);
+        session.setEndedAt(now);
+        gameSessionRepository.save(session);
+        return true;
     }
 
     public GameSessionResponse toResponse(GameSession session) {
@@ -128,6 +189,7 @@ public class GameSessionService {
                 session.getPlayer().getId(),
                 session.getStartedAt(),
                 session.getEndedAt(),
+                session.getLastActivityAt(),
                 session.getStatus(),
                 session.getEventCount(),
                 session.getFinalScore(),
