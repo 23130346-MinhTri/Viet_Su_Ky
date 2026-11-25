@@ -14,6 +14,11 @@ import type {
   PlayerReward,
   RegisterRequest,
   UpdatePlayerProfileRequest,
+  QuizAnswerRequest,
+  QuizAnswerResponse,
+  QuizQuestionsResponse,
+  CompleteGameSessionRequest,
+  GameSessionResponse,
 } from '../types/api'
 
 export const api = axios.create({
@@ -97,5 +102,47 @@ export async function getGameSaves(): Promise<ApiEnvelope<GameSave[]>> {
 
 export async function saveGameState(saveId: string, payload: GameSaveRequest): Promise<ApiEnvelope<GameSave>> {
   const response = await api.put<ApiEnvelope<GameSave>>(`/players/me/game-saves/${saveId}`, payload)
+  return response.data
+}
+
+export async function getQuizQuestions(
+  sessionId: string,
+): Promise<ApiEnvelope<QuizQuestionsResponse>> {
+  const response = await api.get<ApiEnvelope<QuizQuestionsResponse>>(
+    `/game-sessions/${sessionId}/quiz/questions`,
+  )
+  return response.data
+}
+
+export async function submitQuizAnswer(
+  sessionId: string,
+  payload: QuizAnswerRequest,
+): Promise<ApiEnvelope<QuizAnswerResponse>> {
+  const response = await api.post<ApiEnvelope<QuizAnswerResponse>>(
+    `/game-sessions/${sessionId}/quiz/answers`,
+    payload,
+  )
+  return response.data
+}
+
+export async function completeQuizSession(
+  sessionId: string,
+  payload: CompleteGameSessionRequest,
+  idempotencyKey: string,
+): Promise<ApiEnvelope<GameSessionResponse>> {
+  const response = await api.post<ApiEnvelope<GameSessionResponse>>(
+    `/game-sessions/${sessionId}/complete`,
+    payload,
+    { headers: { 'Idempotency-Key': idempotencyKey } },
+  )
+  return response.data
+}
+
+export async function getGameSession(
+  sessionId: string,
+): Promise<ApiEnvelope<GameSessionResponse>> {
+  const response = await api.get<ApiEnvelope<GameSessionResponse>>(
+    `/game-sessions/${sessionId}`,
+  )
   return response.data
 }

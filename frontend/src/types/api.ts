@@ -118,3 +118,67 @@ export interface GameSaveRequest {
   missionId?: string | null
   sessionId?: string | null
 }
+
+export type SessionStatus =
+  | 'ACTIVE'
+  | 'COMPLETED'
+  | 'EXPIRED'
+  | 'ABANDONED'
+
+export interface QuizOption {
+  optionId: string
+  label: string
+  text: string
+}
+
+export interface QuizQuestion {
+  questionId: string
+  order: number
+  prompt: string
+  options: QuizOption[]
+  answered: boolean
+  selectedOptionId: string | null
+}
+
+export interface QuizQuestionsResponse {
+  sessionId: string
+  status: SessionStatus
+  answeredCount: number
+  questions: QuizQuestion[]
+}
+
+export interface QuizAnswerRequest {
+  eventId: string
+  questionId: string
+  selectedOptionId: string
+}
+
+export interface QuizAnswerResponse {
+  sessionId: string
+  eventId: string
+  questionId: string
+  selectedOptionId: string
+  answeredCount: number
+  answerRecorded: boolean
+}
+
+export interface GameSessionResponse {
+  id: string
+  missionId: string
+  missionCode: string
+  missionTitle: string
+  playerId: string
+  startedAt: string
+  endedAt: string | null
+  lastActivityAt: string
+  status: SessionStatus
+  eventCount: number
+  finalScore: number
+  metadata: string | null
+}
+
+export interface CompleteGameSessionRequest {
+  finalScore: null
+  metadata: string
+  durationSeconds: null
+}
