@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.UUID;
 
@@ -73,11 +74,13 @@ public class GameSessionController {
     @PostMapping("/game-sessions/{sessionId}/complete")
     public ResponseEntity<ApiResponse<GameSessionResponse>> completeSession(@AuthenticationPrincipal User user,
                                                                             @PathVariable UUID sessionId,
+                                                                            @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey,
                                                                             @RequestBody CompleteGameSessionRequest request) {
         Account account = authenticationService.getCurrentAccount(UUID.fromString(user.getUsername()));
         PlayerProfile player = playerProfileService.getForAccount(account);
-        GameSession session = gameSessionService.completeSession(player.getId(), sessionId, request);
-        return ResponseEntity.ok(ApiResponse.success("Game session completed", gameSessionService.toResponse(session)));
+        GameSessionResponse response = gameSessionService.completeSession(
+                player.getId(), sessionId, request, idempotencyKey);
+        return ResponseEntity.ok(ApiResponse.success("Game session completed", response));
     }
 
     @PostMapping("/game-sessions/{sessionId}/abandon")

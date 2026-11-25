@@ -57,15 +57,15 @@ public class PlayerProgressService {
 
     @Transactional
     public PlayerProgress ensureForPlayer(PlayerProfile player) {
-        return playerProgressRepository.findByPlayerId(player.getId())
-                .orElseGet(() -> playerProgressRepository.save(new PlayerProgress(player)));
+        return lockOrCreateForPlayer(player);
     }
 
     @Transactional
     public PlayerProgress recalculateForPlayer(PlayerProfile player) {
+        PlayerProgress progress = lockOrCreateForPlayer(player);
         List<MissionProgress> missionProgress = missionProgressRepository.findByPlayerIdOrderByMission_MissionOrderAsc(player.getId());
         int totalCompleted = (int) missionProgress.stream()
-                .filter(progress -> progress.getStatus() == MissionProgressStatus.COMPLETED)
+                .filter(missionRecord -> missionRecord.getStatus() == MissionProgressStatus.COMPLETED)
                 .count();
 
         List<String> unlocked = missionRepository.findAllByOrderByMissionOrderAsc().stream()
@@ -78,7 +78,6 @@ public class PlayerProgressService {
                 .mapToInt(PlayerReward::getRewardPoints)
                 .sum();
 
-        PlayerProgress progress = ensureForPlayer(player);
         progress.setChapter("CHAPTER_1");
         progress.setTotalMissionsCompleted(totalCompleted);
         progress.setTotalPoints(totalPoints);
@@ -90,6 +89,7 @@ public class PlayerProgressService {
         return playerProgressRepository.save(progress);
     }
 
+    @Transactional
     public PlayerProgressResponse getPlayerProgress(UUID playerId) {
         PlayerProfile player = playerProfileRepository.findById(playerId)
                 .orElseThrow(() -> new ApiException("Player not found"));
@@ -102,6 +102,18 @@ public class PlayerProgressService {
                 parseUnlocked(progress.getUnlockedContent()),
                 getMissionProgressResponses(playerId)
         );
+    }
+
+    private PlayerProgress lockOrCreateForPlayer(PlayerProfile player) {
+        var existing = playerProgressRepository.findForUpdateByPlayerId(player.getId());
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        PlayerProfile lockedPlayer = playerProfileRepository.findForUpdateById(player.getId())
+                .orElseThrow(() -> new ApiException("Player not found"));
+        return playerProgressRepository.findForUpdateByPlayerId(lockedPlayer.getId())
+                .orElseGet(() -> playerProgressRepository.save(new PlayerProgress(lockedPlayer)));
     }
 
     public List<MissionProgressResponse> getMissionProgressResponses(UUID playerId) {

@@ -216,7 +216,7 @@ class Phase2423PostgresConcurrencyTest {
                 "Concurrency mission",
                 "CHAPTER_1",
                 1,
-                MissionType.QUIZ,
+                MissionType.EXPLORATION,
                 10));
         GameSession session = gameSessionRepository.saveAndFlush(
                 new GameSession(player, mission, Instant.now().minus(121, ChronoUnit.MINUTES)));

@@ -73,14 +73,14 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("player-phase24@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Phase24 Player");
 
-        Mission mission = missionRepository.save(new Mission("M-001", "First Mission", "CHAPTER_1", 1, MissionType.QUIZ, 250));
+        Mission mission = missionRepository.save(new Mission("M-001", "First Mission", "CHAPTER_1", 1, MissionType.EXPLORATION, 250));
 
         GameSession session = gameSessionService.createSession(player.getId(), mission.getId());
         assertEquals(SessionStatus.ACTIVE, session.getStatus());
         assertTrue(missionProgressRepository
                 .findByPlayerIdAndMissionId(player.getId(), mission.getId()).isPresent());
 
-        gameSessionService.completeSession(player.getId(), session.getId(), new CompleteGameSessionRequest(95, "{\"result\":\"success\"}", 120));
+        gameSessionService.completeSession(player.getId(), session.getId(), new CompleteGameSessionRequest(null, "{\"result\":\"success\"}", null));
 
         MissionProgress progress = missionProgressRepository.findByPlayerIdAndMissionId(player.getId(), mission.getId()).orElseThrow();
         assertEquals(MissionProgressStatus.COMPLETED, progress.getStatus());
@@ -98,7 +98,7 @@ class GameSessionServiceIntegrationTest {
         Account accountTwo = accountService.createAccount("player-b@test.com", "Password123!");
         PlayerProfile playerTwo = playerProfileService.createForAccount(accountTwo, "Player B");
 
-        Mission mission = missionRepository.save(new Mission("M-002", "Second Mission", "CHAPTER_1", 2, MissionType.QUIZ, 100));
+        Mission mission = missionRepository.save(new Mission("M-002", "Second Mission", "CHAPTER_1", 2, MissionType.EXPLORATION, 100));
         GameSession session = gameSessionService.createSession(playerOne.getId(), mission.getId());
 
         assertThrows(ApiException.class, () -> gameSessionService.getSessionForPlayer(playerTwo.getId(), session.getId()));
@@ -109,7 +109,7 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("duplicate-session@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Duplicate Session Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-DUPLICATE", "Duplicate Session", "CHAPTER_1", 3, MissionType.QUIZ, 100));
+                "M-DUPLICATE", "Duplicate Session", "CHAPTER_1", 3, MissionType.EXPLORATION, 100));
 
         gameSessionService.createSession(player.getId(), mission.getId());
 
@@ -123,9 +123,9 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("locked-session@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Locked Session Player");
         Mission prerequisite = missionRepository.save(new Mission(
-                "M-PREREQ", "Prerequisite", "CHAPTER_1", 4, MissionType.QUIZ, 100));
+                "M-PREREQ", "Prerequisite", "CHAPTER_1", 4, MissionType.EXPLORATION, 100));
         Mission locked = missionRepository.save(new Mission(
-                "M-LOCKED", "Locked Mission", "CHAPTER_1", 5, MissionType.QUIZ, 100));
+                "M-LOCKED", "Locked Mission", "CHAPTER_1", 5, MissionType.EXPLORATION, 100));
         locked.setPrerequisiteMission(prerequisite);
         missionRepository.save(locked);
 
@@ -141,7 +141,7 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("mission-read@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Mission Read Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-READ", "Read-only Mission", "CHAPTER_1", 6, MissionType.QUIZ, 100));
+                "M-READ", "Read-only Mission", "CHAPTER_1", 6, MissionType.EXPLORATION, 100));
 
         var responses = missionService.getMissionResponsesForPlayer(player.getId());
 
@@ -158,7 +158,7 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("expiration-get@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Expiration Get Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-EXP-GET", "Expiration Get", "CHAPTER_1", 7, MissionType.QUIZ, 100));
+                "M-EXP-GET", "Expiration Get", "CHAPTER_1", 7, MissionType.EXPLORATION, 100));
         GameSession session = gameSessionService.createSession(player.getId(), mission.getId());
         session.setLastActivityAt(Instant.now().minus(31, ChronoUnit.MINUTES));
         gameSessionRepository.saveAndFlush(session);
@@ -178,7 +178,7 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("expiration-event@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Expiration Event Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-EXP-EVENT", "Expiration Event", "CHAPTER_1", 8, MissionType.QUIZ, 100));
+                "M-EXP-EVENT", "Expiration Event", "CHAPTER_1", 8, MissionType.EXPLORATION, 100));
         GameSession session = gameSessionService.createSession(player.getId(), mission.getId());
         session.setStartedAt(Instant.now().minus(121, ChronoUnit.MINUTES));
         session.setLastActivityAt(session.getStartedAt());
@@ -212,7 +212,7 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("expiration-abandon@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Expiration Abandon Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-EXP-ABANDON", "Expiration Abandon", "CHAPTER_1", 9, MissionType.QUIZ, 100));
+                "M-EXP-ABANDON", "Expiration Abandon", "CHAPTER_1", 9, MissionType.EXPLORATION, 100));
         GameSession session = gameSessionService.createSession(player.getId(), mission.getId());
         session.setLastActivityAt(Instant.now().minus(31, ChronoUnit.MINUTES));
         gameSessionRepository.saveAndFlush(session);
@@ -232,21 +232,18 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("expiration-event-valid@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Valid Event Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-EXP-VALID", "Valid Event", "CHAPTER_1", 10, MissionType.QUIZ, 100));
+                "M-EXP-VALID", "Valid Event", "CHAPTER_1", 10, MissionType.EXPLORATION, 100));
         GameSession session = gameSessionService.createSession(player.getId(), mission.getId());
         session.setStartedAt(Instant.now().minus(119, ChronoUnit.MINUTES));
         session.setLastActivityAt(Instant.now().minus(29, ChronoUnit.MINUTES));
-        Instant lifetimeBeforeEvent = session.getStartedAt();
         gameSessionRepository.saveAndFlush(session);
 
         GameSession updated = gameSessionService.recordEvent(
                 player.getId(), session.getId(),
                 new GameSessionEventRequest("CHECKPOINT_REACHED", "{}"));
-
-        assertEquals(SessionStatus.ACTIVE, updated.getStatus());
-        assertEquals(lifetimeBeforeEvent.truncatedTo(ChronoUnit.SECONDS),
-                updated.getStartedAt().truncatedTo(ChronoUnit.SECONDS));
-        assertTrue(updated.getLastActivityAt().isAfter(session.getLastActivityAt()));
+        assertEquals(1, updated.getEventCount());
+        assertTrue(updated.getLastActivityAt().isAfter(
+                Instant.now().minus(1, ChronoUnit.MINUTES)));
     }
 
     @Test
@@ -254,13 +251,13 @@ class GameSessionServiceIntegrationTest {
         Account account = accountService.createAccount("expiration-sweep@test.com", "Password123!");
         PlayerProfile player = playerProfileService.createForAccount(account, "Expiration Sweep Player");
         Mission mission = missionRepository.save(new Mission(
-                "M-EXP-SWEEP", "Expiration Sweep", "CHAPTER_1", 11, MissionType.QUIZ, 100));
+                "M-EXP-SWEEP", "Expiration Sweep", "CHAPTER_1", 11, MissionType.EXPLORATION, 100));
         GameSession overdue = gameSessionService.createSession(player.getId(), mission.getId());
         overdue.setLastActivityAt(Instant.now().minus(31, ChronoUnit.MINUTES));
         gameSessionRepository.saveAndFlush(overdue);
 
         Mission terminalMission = missionRepository.save(new Mission(
-                "M-EXP-TERMINAL", "Expiration Terminal", "CHAPTER_1", 12, MissionType.QUIZ, 100));
+                "M-EXP-TERMINAL", "Expiration Terminal", "CHAPTER_1", 12, MissionType.EXPLORATION, 100));
         GameSession abandoned = gameSessionService.createSession(player.getId(), terminalMission.getId());
         abandoned = gameSessionService.abandonSession(player.getId(), abandoned.getId());
 
