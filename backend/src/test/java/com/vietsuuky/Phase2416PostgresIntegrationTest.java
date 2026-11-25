@@ -23,6 +23,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.util.UUID;
 
@@ -30,9 +32,32 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
-@ActiveProfiles("test")
+@ActiveProfiles("postgres")
 @EnabledIfEnvironmentVariable(named = "POSTGRES_INTEGRATION_TESTS", matches = "true")
 class Phase2416PostgresIntegrationTest {
+
+    @DynamicPropertySource
+    static void postgresProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", () -> requiredPostgresEnvironment("POSTGRES_INTEGRATION_URL"));
+        registry.add("spring.datasource.username", () -> requiredPostgresEnvironment("POSTGRES_INTEGRATION_USER"));
+        registry.add("spring.datasource.password", () -> requiredPostgresEnvironment("POSTGRES_INTEGRATION_PASSWORD"));
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.jpa.hibernate.ddl-auto", () -> "validate");
+        registry.add("spring.jpa.properties.hibernate.default_schema", () -> "app");
+        registry.add("spring.flyway.enabled", () -> "true");
+        registry.add("spring.flyway.locations", () -> "classpath:db/migration");
+        registry.add("spring.flyway.schemas", () -> "app");
+        registry.add("spring.flyway.default-schema", () -> "app");
+        registry.add("app.jwt.secret", () -> "01234567890123456789012345678901234567890123456789");
+    }
+
+    private static String requiredPostgresEnvironment(String name) {
+        String value = System.getenv(name);
+        if (value == null || value.isBlank()) {
+            throw new IllegalStateException(name + " is required for POSTGRES_INTEGRATION_TESTS");
+        }
+        return value;
+    }
 
     @Autowired
     private AccountRepository accountRepository;
@@ -209,7 +234,7 @@ class Phase2416PostgresIntegrationTest {
                 "Phase 2.4.1.6 test mission",
                 "CHAPTER_1",
                 1,
-                MissionType.QUIZ,
+                MissionType.EXPLORATION,
                 10));
     }
 }

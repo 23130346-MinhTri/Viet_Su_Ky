@@ -29,7 +29,13 @@ ALTER TABLE app.player_rewards
     DROP CONSTRAINT IF EXISTS uk_player_rewards_player_mission;
 
 ALTER TABLE app.player_rewards
+    DROP CONSTRAINT IF EXISTS player_rewards_reward_source_check;
+
+ALTER TABLE app.player_rewards
     ADD CONSTRAINT player_rewards_reward_source_check CHECK (reward_source IN ('MISSION_COMPLETION', 'ACHIEVEMENT', 'REPLAY', 'EVENT', 'OPTIONAL_MISSION'));
+
+ALTER TABLE app.player_rewards
+    DROP CONSTRAINT IF EXISTS fk_player_rewards_session;
 
 ALTER TABLE app.player_rewards
     ADD CONSTRAINT fk_player_rewards_session FOREIGN KEY (session_id) REFERENCES app.game_sessions (id) ON DELETE SET NULL;

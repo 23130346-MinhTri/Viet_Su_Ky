@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import ProfilePage from './pages/ProfilePage'
 
 const GamePage = lazy(() => import('./pages/GamePage'))
+const QuizPage = lazy(() => import('./pages/QuizPage'))
 
 function App() {
   return (
@@ -33,6 +34,16 @@ function App() {
                 <Suspense fallback={<p role="status">Đang tải game demo…</p>}>
                   <GamePage />
                 </Suspense>
+              }
+            />
+            <Route
+              path="quiz/:sessionId"
+              element={
+                <ProtectedRoute>
+                  <Suspense fallback={<p role="status">Đang tải Quiz…</p>}>
+                    <QuizPage />
+                  </Suspense>
+                </ProtectedRoute>
               }
             />
             <Route path="*" element={<HomePage />} />

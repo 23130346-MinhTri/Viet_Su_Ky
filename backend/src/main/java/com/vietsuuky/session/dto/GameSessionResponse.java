@@ -13,6 +13,7 @@ public record GameSessionResponse(
         UUID playerId,
         Instant startedAt,
         Instant endedAt,
+        Instant lastActivityAt,
         SessionStatus status,
         int eventCount,
         int finalScore,

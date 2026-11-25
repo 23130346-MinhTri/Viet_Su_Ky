@@ -1,4 +1,7 @@
 ALTER TABLE app.player_rewards
+    DROP CONSTRAINT IF EXISTS player_rewards_required_source_reference_check;
+
+ALTER TABLE app.player_rewards
     ADD CONSTRAINT player_rewards_required_source_reference_check
     CHECK (
         reward_source NOT IN ('ACHIEVEMENT', 'REPLAY', 'EVENT', 'OPTIONAL_MISSION')

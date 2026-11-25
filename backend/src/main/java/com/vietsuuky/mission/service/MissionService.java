@@ -45,18 +45,23 @@ public class MissionService {
             if (mission.getStatus() != MissionStatus.ACTIVE) {
                 continue;
             }
-            responses.add(toResponse(mission));
+            MissionProgressStatus progressStatus = resolveStatus(playerId, mission);
+            responses.add(toResponse(mission, progressStatus, progressStatus != MissionProgressStatus.LOCKED));
         }
         return responses;
     }
 
     public Mission getMissionOrThrow(UUID missionId) {
         return missionRepository.findById(missionId)
-                .orElseThrow(() -> new ApiException("Mission not found"));
+                .orElseThrow(() -> new ApiException("MISSION_NOT_FOUND", "Mission not found"));
     }
 
-    public MissionResponse getMissionResponse(UUID missionId) {
-        return toResponse(getMissionOrThrow(missionId));
+    public MissionResponse getMissionResponse(UUID playerId, UUID missionId) {
+        Mission mission = getMissionOrThrow(missionId);
+        MissionProgressStatus progressStatus = resolveStatus(playerId, mission);
+        boolean available = mission.getStatus() == MissionStatus.ACTIVE
+                && progressStatus != MissionProgressStatus.LOCKED;
+        return toResponse(mission, progressStatus, available);
     }
 
     public MissionAvailabilityResponse getAvailabilityForPlayer(UUID playerId, UUID missionId) {
@@ -73,7 +78,7 @@ public class MissionService {
     public void ensureMissionAvailable(UUID playerId, UUID missionId) {
         MissionAvailabilityResponse availability = getAvailabilityForPlayer(playerId, missionId);
         if (!availability.available()) {
-            throw new ApiException("Mission is locked or unavailable for this player");
+            throw new ApiException("MISSION_LOCKED", "Mission is locked or unavailable for this player");
         }
     }
 
@@ -111,7 +116,30 @@ public class MissionService {
                 mission.getPrerequisiteMission() == null ? null : mission.getPrerequisiteMission().getId(),
                 mission.getRewardPoints(),
                 mission.getRewardCode(),
-                mission.getStatus()
+                mission.getStatus(),
+                mission.getStatus() == MissionStatus.ACTIVE,
+                MissionProgressStatus.AVAILABLE
+        );
+    }
+
+    public MissionResponse toResponse(Mission mission,
+                                      MissionProgressStatus progressStatus,
+                                      boolean available) {
+        return new MissionResponse(
+                mission.getId(),
+                mission.getCode(),
+                mission.getTitle(),
+                mission.getDescription(),
+                mission.getChapter(),
+                mission.getMissionOrder(),
+                mission.getMissionType(),
+                mission.getUnlockCondition(),
+                mission.getPrerequisiteMission() == null ? null : mission.getPrerequisiteMission().getId(),
+                mission.getRewardPoints(),
+                mission.getRewardCode(),
+                mission.getStatus(),
+                available,
+                progressStatus
         );
     }
 }

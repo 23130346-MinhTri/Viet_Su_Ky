@@ -1,0 +1,126 @@
+batch_id: "PHASE-2.4.2.2"
+completed_tasks:
+  - "T1"
+  - "T2"
+  - "T3"
+  - "T4"
+  - "T5"
+  - "T6"
+  - "T7"
+  - "T8"
+blocked_tasks: []
+files_changed:
+  T1:
+    - file: "backend/src/main/resources/db/migration/V9__game_session_expiration.sql"
+      change_type: "created"
+      description: "Adds last_activity_at, backfill, NOT NULL, and ACTIVE expiration index"
+    - file: "backend/src/main/java/com/vietsuuky/session/entity/GameSession.java"
+      change_type: "modified"
+      description: "Adds lastActivityAt and consistent creation constructors"
+  T2:
+    - file: "backend/src/main/java/com/vietsuuky/config/TimeConfig.java"
+      change_type: "created"
+      description: "Provides injectable system UTC Clock"
+    - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationPolicy.java"
+      change_type: "created"
+      description: "Adds strict 30/120-minute expiration policy"
+  T3:
+    - file: "backend/src/main/java/com/vietsuuky/session/repository/GameSessionRepository.java"
+      change_type: "modified"
+      description: "Adds pessimistic session and overdue-batch queries"
+    - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+      change_type: "modified"
+      description: "Adds centralized expiration transitions and terminal checks"
+  T4:
+    - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+      change_type: "modified"
+      description: "Adds lazy expiration to GET, event, complete, and abandon"
+  T5:
+    - file: "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationScheduler.java"
+      change_type: "created"
+      description: "Adds fixed-delay batch expiration sweep"
+    - file: "backend/src/main/java/com/vietsuuky/VietSuKyApplication.java"
+      change_type: "modified"
+      description: "Enables Spring scheduling"
+  T6:
+    - file: "backend/src/test/java/com/vietsuuky/session/GameSessionExpirationPolicyTest.java"
+      change_type: "created"
+      description: "Covers strict timeout boundaries"
+    - file: "backend/src/test/java/com/vietsuuky/GameSessionServiceIntegrationTest.java"
+      change_type: "modified"
+      description: "Covers lazy and scheduled expiration behavior"
+  T8:
+    - file: "PHASE_2_4_2_2_FINAL_REPORT.md"
+      change_type: "created"
+      description: "Records implementation and verification evidence"
+upstream_artifacts_consumed:
+  T1:
+    - artifact: "PHASE_2_4_2_1_SESSION_EXPIRATION_AUDIT.md"
+      used_for: "Missing schema and lifecycle findings"
+  T2:
+    - artifact: "PHASE_2_4_GAMEPLAY_LIFECYCLE.md"
+      used_for: "30/120-minute approved policy"
+  T3:
+    - artifact: "PHASE_2_4_2_2_PRE_IMPLEMENTATION_AUDIT.md"
+      used_for: "Row-lock and race strategy"
+  T5:
+    - artifact: "PHASE_2_4_2_2_IMPLEMENTATION_PLAN.md"
+      used_for: "Scheduler batch design"
+traceability:
+  - requirement: "SESSION_INACTIVITY_30"
+    plan_item: "T2-T4"
+    task: "T2"
+    files:
+      - "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationPolicy.java"
+      - "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+    status: "completed"
+  - requirement: "SESSION_ABSOLUTE_120"
+    plan_item: "T2-T4"
+    task: "T2"
+    files:
+      - "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationPolicy.java"
+      - "backend/src/main/java/com/vietsuuky/session/service/GameSessionService.java"
+    status: "completed"
+  - requirement: "SESSION_EXPIRATION_SCHEMA"
+    plan_item: "T1"
+    task: "T1"
+    files:
+      - "backend/src/main/resources/db/migration/V9__game_session_expiration.sql"
+    status: "completed"
+  - requirement: "SESSION_EXPIRATION_CONCURRENT_SAFETY"
+    plan_item: "T3-T5"
+    task: "T3"
+    files:
+      - "backend/src/main/java/com/vietsuuky/session/repository/GameSessionRepository.java"
+      - "backend/src/main/java/com/vietsuuky/session/service/GameSessionExpirationScheduler.java"
+    status: "completed"
+protocol_violation: false
+errors: []
+warnings:
+  - "Automated multithreaded PostgreSQL JUnit concurrency tests were not added; direct PostgreSQL terminal-state verification was performed."
+  - "The normal H2 suite skips the existing PostgreSQL opt-in test class."
+test_results:
+  T2:
+    command: "GameSessionExpirationPolicyTest"
+    passed: 4
+    failed: 0
+    skipped: 0
+    failures: []
+  T6:
+    command: "GameSessionServiceIntegrationTest"
+    passed: 10
+    failed: 0
+    skipped: 0
+    failures: []
+  T8:
+    command: "mvn -q clean test"
+    passed: 31
+    failed: 0
+    skipped: 4
+    failures: []
+  T7:
+    command: "Disposable PostgreSQL 16.13 V1-V9 verification"
+    passed: 1
+    failed: 0
+    skipped: 0
+    failures: []
