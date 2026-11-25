@@ -1,5 +1,5 @@
 ALTER TABLE app.game_sessions
-    ADD COLUMN last_activity_at TIMESTAMP;
+    ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP;
 
 UPDATE app.game_sessions
 SET last_activity_at = started_at
