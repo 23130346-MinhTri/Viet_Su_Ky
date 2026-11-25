@@ -1,272 +1,379 @@
-# PHASE 2.4.2.3 — SESSION EXPIRATION FINAL VERIFICATION REPORT
+# PHASE 2.4.3 — GAMEPLAY EVENT VALIDATION & SERVER-AUTHORITATIVE COMPLETION
+# PRE-IMPLEMENTATION AUDIT
 
-## Final recommendation
+## 1. OBJECTIVE
 
-**PASS WITH WARNINGS**
+Perform a comprehensive pre-implementation audit of Phase 2.4.3 for the VIỆT SỬ KÝ project.
+
+The objective is to inspect the existing repository, approved architecture, Phase 2.4 lifecycle documents, and completed Phase 2.4.1–2.4.2 implementation.
 
-The verified implementation persists `ACTIVE -> EXPIRED` before rejected event/completion operations, and the PostgreSQL service-level concurrency tests pass on a disposable PostgreSQL 16 instance.
+Identify:
+- Existing functionality.
+- Missing functionality.
+- Security and integrity risks.
+- Data consistency risks.
+- Dependencies between features.
+- Recommended implementation order.
+- Test and verification requirements.
 
-## 1. Scope verified
+This is an AUDIT ONLY task.
 
-- Transaction rollback behavior for overdue sessions
-- Persisted database state after rejected operations
-- Event versus expiration scheduler
-- Completion versus expiration scheduler
-- Abandonment versus expiration scheduler
-- Concurrent expiration attempts
-- Terminal-state immutability
-- Flyway V1–V9
-- Hibernate `ddl-auto=validate`
+Do not implement code.
 
-No V1–V8 migration, active development database, Docker volume, score policy, reward policy, frontend, or Phaser behavior was changed.
+## 2. PROJECT CONTEXT
 
-## 2. Transaction rollback evidence
+Repository:
+23130346-MinhTri/Viet_Su_Ky
 
-### Implementation inspected
+Working directory:
+D:\Games\History
 
-The overdue operation methods use `@Transactional`:
+Architecture:
+- Modular monolith.
+- React + TypeScript + Vite + Phaser 3 frontend.
+- Java 17 + Spring Boot backend.
+- PostgreSQL 16.
+- Docker Compose.
+- Nginx.
 
-- `recordEvent(...)` uses `@Transactional(noRollbackFor = ApiException.class)`
-- `completeSession(...)` uses `@Transactional(noRollbackFor = ApiException.class)`
-- `abandonSession(...)` uses `@Transactional(noRollbackFor = ApiException.class)`
-- `getSessionForPlayer(...)` uses `@Transactional`
+Backend is authoritative for:
+- Gameplay validation.
+- Scores.
+- Mission completion.
+- Rewards.
+- Unlocks.
+- Persistent player progress.
 
-When an operation detects expiration, `expireIfOverdue`:
+Frontend and Phaser are responsible for presentation, input, and gameplay interaction. They must not be trusted as authorities for important game state.
 
-1. sets `status = EXPIRED`
-2. sets `endedAt`
-3. saves the entity
-4. returns a lifecycle result or throws `SESSION_EXPIRED`
+## 3. MANDATORY DOCUMENTATION READING
 
-For event and completion, `SESSION_EXPIRED` is outside the configured rollback policy, so the transaction commits the expiration transition and rejects the operation.
+Before inspecting implementation, read the project documentation and AI workflow instructions.
 
-For abandonment of an overdue session, the method returns the already-expired entity through a normal transaction commit.
+At minimum:
 
-### GET overdue session
+- docs/README.md
+- AI_WORKFLOW.md
+- PROJECT_CONTEXT.md
+- PRODUCT_GDD.md
+- TECHNICAL_DESIGN.md
+- SRS.md
+- ARCHITECTURE.md
 
-Verified:
+Also inspect all relevant Phase 2.4 documents, including:
 
-- `getSessionForPlayer` locks the owner/session row
-- an overdue `ACTIVE` session becomes `EXPIRED`
-- `endedAt` is persisted
-- a subsequent repository reload returns `EXPIRED`
+- PHASE_2_4_GAMEPLAY_LIFECYCLE.md
+- PHASE_2_4_FINAL_DESIGN_REVIEW.md
+- Phase 2.4.1 reports.
+- Phase 2.4.2 reports.
+- PHASE_2_4_2_2_FINAL_REPORT.md
+- PHASE_2_4_2_3_FINAL_VERIFICATION_REPORT.md
+- Existing Phase 2.4 implementation plans and audit reports.
 
-Test:
+If a document does not exist, report that fact. Do not invent its contents.
 
-- `GameSessionServiceIntegrationTest#getRetrievalExpiresInactivityOverdueSession`
+Preserve approved V3 product decisions and existing architectural constraints.
 
-### Event on overdue session
+## 4. INSPECT THE ACTUAL REPOSITORY
 
-Verified:
+Inspect the current source code, not only documentation.
 
-- event throws `SESSION_EXPIRED`
-- no event count increment
-- no session last-activity refresh
-- persisted session remains `EXPIRED`
-- `endedAt` remains persisted
+### A. Gameplay event pipeline
 
-Test:
+Inspect:
+- GameSession entity.
+- GameSessionService.
+- GameSessionRepository.
+- Event DTOs.
+- Event controllers.
+- MissionProgress entity and service.
+- Mission definitions and question/checkpoint data.
+- Existing event validation logic.
+- Event ordering and session lifecycle rules.
 
-- `GameSessionServiceIntegrationTest#eventAndCompletionRejectOverdueSessionWithoutReward`
+Determine:
 
-### Completion on overdue session
+1. What event types are currently supported?
+2. Which event fields are accepted from the client?
+3. Which fields are validated by the backend?
+4. Can a client submit arbitrary event types?
+5. Can events be replayed?
+6. Can events be submitted out of order?
+7. Is event ownership validated?
+8. Is the session checked for ACTIVE and EXPIRED state?
+9. Are invalid events prevented from changing progress?
+10. Are duplicate events handled safely?
+11. Is event evidence persisted?
+12. Can the client manipulate event metadata to influence rewards or scores?
 
-Verified:
+Do not assume that a DTO field is safe merely because it has a validation annotation.
 
-- completion throws `SESSION_EXPIRED`
-- reward code is not reached
-- mission progress is not completed
-- persisted session remains `EXPIRED`
+### B. Server-authoritative score calculation
 
-Test:
+Inspect the current completion flow.
 
-- `GameSessionServiceIntegrationTest#eventAndCompletionRejectOverdueSessionWithoutReward`
+Determine:
 
-### Abandon overdue session
+- Where finalScore originates.
+- Whether the client can submit finalScore.
+- Whether the backend recalculates the score.
+- Whether canonical question/checkpoint data exists on the backend.
+- Whether answers are validated against server-side correct answers.
+- Whether score calculation is deterministic.
+- Whether partial completion is possible.
+- Whether invalid or incomplete sessions can be completed.
+- Whether score limits and numeric ranges are enforced.
 
-Verified:
+Explicitly identify every client-controlled field that could affect score, completion, or reward.
 
-- abandonment converts the persisted session to `EXPIRED`
-- the status is not `ABANDONED`
-- `endedAt` is persisted
+### C. Mission completion
 
-Test:
+Inspect:
 
-- `GameSessionServiceIntegrationTest#abandonmentConvertsOverdueSessionToExpired`
+- completeSession.
+- MissionProgress updates.
+- GameSession state transitions.
+- Prerequisite handling.
+- Mission availability.
+- Completion response.
+- Transaction boundaries.
 
-### Stable API error mapping
+Determine whether completion is atomic across:
 
-`GlobalExceptionHandler` maps `SESSION_EXPIRED` to HTTP `409 Conflict`.
+- Session status.
+- Final score.
+- Mission progress.
+- Player progress.
+- Reward issuance.
 
-The exception is stable and persisted database state is independent of the controller response.
+Identify any possibility of partial completion or inconsistent state.
 
-## 3. PostgreSQL concurrency tests added
+### D. Reward issuance and idempotency
 
-Added:
+Inspect:
 
-- `backend/src/test/java/com/vietsuuky/Phase2423PostgresConcurrencyTest.java`
+- PlayerReward entity.
+- Reward repository and service.
+- IdempotencyRecord entity and service.
+- Database unique constraints.
+- Completion request handling.
+- Existing reward uniqueness rules.
 
-The test class is opt-in through `POSTGRES_INTEGRATION_TESTS=true` and requires:
+Determine:
 
-- `POSTGRES_INTEGRATION_URL`
-- `POSTGRES_INTEGRATION_USER`
-- `POSTGRES_INTEGRATION_PASSWORD`
+1. Whether a duplicate completion can issue duplicate rewards.
+2. Whether idempotency is persisted in PostgreSQL.
+3. Whether the same key with a different payload is rejected.
+4. Whether concurrent requests are handled safely.
+5. Whether reward issuance is atomic with mission completion.
+6. Whether reward calculations depend on client-controlled data.
+7. Whether repeatable and one-time rewards are distinguished correctly.
 
-The tests use independent worker threads, CountDownLatch coordination, real Spring service transactions, pessimistic row locks, and the real expiration scheduler.
+Do not redesign existing approved reward rules without documenting the reason.
 
-### Event versus scheduler
+### E. Player progress consistency
 
-Result:
+Inspect:
 
-- final state `EXPIRED`
-- `endedAt` present
-- event count remains `0`
+- PlayerProgress entity.
+- MissionProgress entity.
+- Their repositories and services.
+- Progress recalculation logic.
+- Mission prerequisite logic.
 
-### Completion versus scheduler
+Determine:
 
-Result:
+- Which values are authoritative.
+- Whether derived progress can become inconsistent.
+- Whether progress is updated atomically.
+- Whether repeated completion changes progress incorrectly.
+- Whether concurrent mission completions can cause lost updates.
 
-- final state `EXPIRED`
-- `endedAt` present
-- final score remains `0`
-- no reward record
-- mission progress not completed
+### F. Game Save
 
-### Abandonment versus scheduler
+Inspect the existing GameSave design and implementation status.
 
-Result:
+Determine:
+- Whether it is currently implemented.
+- Which data belongs in a save snapshot.
+- Whether it duplicates mission progress or session state.
+- Whether the save can be used to bypass gameplay validation.
+- Whether it depends on Phase 2.4.3.
 
-- final state `EXPIRED`
-- session is not left `ABANDONED`
-- `endedAt` present
+Do not implement GameSave in this audit.
 
-### Concurrent expiration attempts
+## 5. SECURITY AND DATA INTEGRITY REVIEW
 
-Verified:
+Evaluate the implementation against these principles:
 
-- scheduler and retrieval/expiration compete on independent transactions
-- only `EXPIRED` wins
-- `endedAt` remains stable
-- subsequent event and completion attempts reject
-- no reward record
+1. Backend-authoritative game state.
+2. Client input is untrusted.
+3. Ownership comes from authenticated identity.
+4. No client-supplied player ID is trusted.
+5. Events are validated against canonical server-side definitions.
+6. Completion requires validated gameplay evidence.
+7. Scores are calculated or verified server-side.
+8. Rewards are issued only after successful completion.
+9. Idempotency is enforced at the database level where appropriate.
+10. Concurrent requests cannot create duplicate rewards or inconsistent progress.
+11. Expired and terminal sessions cannot continue gameplay.
+12. Failed operations cannot leave partial state changes.
 
-### Terminal immutability
+Inspect whether existing expiration locking and transaction semantics remain compatible with the proposed gameplay pipeline.
 
-The concurrent tests also verify that:
+Do not modify the existing expiration policy.
 
-- `EXPIRED` cannot be replaced by `ACTIVE`
-- subsequent lifecycle operations cannot restore activity
+## 6. DATABASE AND MIGRATION REVIEW
 
-## 4. PostgreSQL verification
+Inspect migrations V1–V9.
 
-Disposable PostgreSQL 16.13 instance:
+Identify:
+- Current relevant tables and relationships.
+- Existing unique constraints and indexes.
+- Missing constraints.
+- Potential foreign-key or transaction issues.
+- Whether additional migrations are required.
 
-- database: `phase2423`
-- port: `55445`
-- no Docker volume
-- no active development database modification
+Do not modify V1–V9.
 
-Flyway:
+Any schema changes must be proposed as forward-only migrations.
 
-- V1 through V9 all present
-- V1–V9 `success=true`
-- current version V9
+Do not reset, delete, or recreate active development databases or Docker volumes.
 
-Hibernate:
+## 7. TEST COVERAGE AUDIT
 
-- `ddl-auto=validate`
-- EntityManagerFactory initialized without mapping mismatch
+Inspect existing unit, integration, E2E, and PostgreSQL opt-in tests.
 
-Indexes verified:
+Identify coverage gaps for:
 
-- `idx_game_sessions_active_expiration`
-- `uk_game_sessions_one_active_per_player_mission`
+- Valid and invalid gameplay events.
+- Event ordering.
+- Duplicate events.
+- Forged client fields.
+- Cross-player access.
+- Session expiration during gameplay.
+- Score calculation.
+- Incomplete mission completion.
+- Duplicate completion.
+- Idempotency key conflicts.
+- Concurrent completion.
+- Reward uniqueness.
+- Player progress consistency.
+- Transaction rollback.
+- PostgreSQL locking and constraints.
 
-PostgreSQL service concurrency test result:
+Separate:
+- Existing verified tests.
+- Existing tests that only cover partial behavior.
+- Missing tests.
 
-- 4 passed
-- 0 failed
-- 0 skipped
-- 0 errors
+Do not claim a test passes unless there is actual execution evidence.
 
-## 5. Regression results
+## 8. IMPLEMENTATION DEPENDENCY ANALYSIS
 
-Java: `17.0.16`
+Recommend an implementation sequence.
 
-Spring Boot: `3.5.3`
+Consider these potential work packages:
 
-PostgreSQL: `16.13`
+A. Gameplay Event Contract & Validation
 
-### Focused expiration tests
+B. Server-side Gameplay Evidence
 
-- `GameSessionExpirationPolicyTest`: 4 passed
-- `GameSessionServiceIntegrationTest`: 10 passed
+C. Server-authoritative Score Calculation
 
-### Full Maven regression
+D. Mission Completion Transaction
 
-Command:
+E. Reward Issuance & Idempotency Verification
 
-```text
-mvn -q clean test
-```
+F. Player Progress Consistency
 
-Result:
+G. Game Save compatibility assessment
 
-- 31 passed
-- 0 failed
-- 0 errors
-- 8 PostgreSQL tests skipped by the normal H2 profile
+Do not assume all work packages should be implemented together.
 
-The 31 passes include authentication, player profile, health, mission/session, foundation, and expiration tests.
+Identify the smallest useful vertical slice that can be implemented and verified independently.
 
-### PostgreSQL opt-in
+For each work package, report:
+- Objective.
+- Existing implementation.
+- Missing functionality.
+- Dependencies.
+- Database impact.
+- API impact.
+- Tests required.
+- Risks.
 
-Command pattern:
+Do not introduce unapproved gameplay features.
 
-```text
-mvn -q clean test "-Dtest=Phase2423PostgresConcurrencyTest"
-```
+## 9. SCOPE RESTRICTIONS
 
-With `POSTGRES_INTEGRATION_TESTS=true` and the disposable database variables set:
+This task is audit only.
 
-- 4 passed
-- 0 failed
-- 0 skipped
+STRICTLY FORBIDDEN:
 
-## 6. Files changed
+- No production Java code changes.
+- No frontend or Phaser changes.
+- No database migration changes.
+- No active database data modification.
+- No Docker volume reset or deletion.
+- No dependency upgrades.
+- No new gameplay features.
+- No reward policy redesign.
+- No score policy redesign without documenting the proposed change.
+- No GameSave implementation.
+- No Phase 2.5 work.
+- No unapproved historical content changes.
 
-### Added
+Preserve existing completed phases.
 
-- `backend/src/test/java/com/vietsuuky/Phase2423PostgresConcurrencyTest.java`
-- `PHASE_2_4_2_3_FINAL_VERIFICATION_REPORT.md`
+## 10. REQUIRED OUTPUT
 
-### Modified
+Create:
 
-- `backend/src/test/java/com/vietsuuky/GameSessionServiceIntegrationTest.java`
+PHASE_2_4_3_PRE_IMPLEMENTATION_AUDIT.md
 
-No production Java file or migration was changed by this verification task.
+The report must include:
 
-## 7. Remaining limitations
+1. Executive summary.
+2. Documentation inspected.
+3. Actual repository implementation inspected.
+4. Current architecture and data flow.
+5. Gameplay event validation findings.
+6. Score calculation findings.
+7. Mission completion findings.
+8. Reward and idempotency findings.
+9. Player progress findings.
+10. GameSave dependency assessment.
+11. Security and data integrity findings.
+12. Database and migration assessment.
+13. Existing test coverage.
+14. Missing test coverage.
+15. Implementation dependency graph.
+16. Recommended vertical slice.
+17. Proposed implementation order.
+18. Risks and unresolved questions.
+19. Explicit files likely to change in the first implementation slice.
+20. Final audit recommendation.
 
-- HTTP-level integration tests for session endpoints were not added; stable `409` mapping is verified in `GlobalExceptionHandler`.
-- The normal H2 suite intentionally skips PostgreSQL opt-in classes.
-- The PostgreSQL suite uses real service transactions and row locks but does not introduce a distributed scheduler or additional infrastructure.
-- Existing completion score/evidence behavior remains outside this verification scope.
+For every important finding, include:
+- File path.
+- Relevant class/method.
+- Actual behavior.
+- Expected behavior.
+- Evidence or test reference.
 
-## 8. Database final-state evidence
+Clearly distinguish verified facts from recommendations and assumptions.
 
-For rejected operation tests, database reload showed:
+## 11. STOP CONDITION
 
-- overdue session status persisted as `EXPIRED`
-- `endedAt` persisted
-- event count unchanged
-- no reward mutation
-- no mission completion mutation
+After creating the audit report:
 
-For PostgreSQL concurrency tests, database reload showed:
+STOP.
 
-- event/scheduler race ends `EXPIRED`
-- completion/scheduler race ends `EXPIRED`
-- abandon/scheduler race ends `EXPIRED`
-- concurrent expiration remains `EXPIRED`
-- subsequent terminal operations cannot restore `ACTIVE`
+Do not create an implementation plan yet.
+
+Do not modify application code.
+
+Wait for explicit review and approval.
+
+The next step will be a separate implementation-plan task.
